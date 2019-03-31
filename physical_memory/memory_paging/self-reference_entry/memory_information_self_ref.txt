@@ -1,0 +1,216 @@
+References:
+https://www.noteblok.net/wp-content/uploads/sites/3/2015/01/Self-referenced_Page_Tables-Vogel-ASPLOS_SrC.pdf
+https://labs.mwrinfosecurity.com/blog/windows-8-kernel-memory-protections-bypass/
+http://os.phil-opp.com/modifying-page-tables.html
+
+
+The Intel Manual "Section 3.3.7.1 Canonical Addressing" says:
+
+"In 64-bit mode, an address is considered to be in canonical form if address bits 63 through to the most-significant implemented bit by the microarchitecture are set to either all ones or all zeros.
+Intel 64 architecture defines a 64-bit linear address. Implementations can support less. The first implementation of IA-32 processors with Intel 64 architecture supports a 48-bit linear address. This means a canonical address must have bits 63 through 48 set to zeros or ones (depending on whether bit 47 is a zero or one)."
+
+Since entry 0x1ED in the PML4 is a self-reference entry then that means that bits 47:39 must be 111101101 which means that bits 63:48 need to be identical to bit 47 for it to be canonical. Therefor making the first possible virtual address for the P*E:
+
+kd> .formats FFFFF68000000000
+Binary: 11111111 11111111 11110110 10000000 00000000 00000000 00000000 00000000
+
+Binary: 11111111 11111111 - Ignored bits set identical to bit 47
+Binary: 111101101 - Entry in the Page Map Level 4 Table (PML4) - HEX: 0x1ED
+Binary: 000000000 - Entry in the Page Directory Pointer Table (PDPT) - HEX: 0x00
+Binary: 000000000 - Entry in the Page Directory Table Entry (PDT) - HEX: 0x00
+Binary: 000000000 - Entry in the Page Table (PT) - HEX: 0x00
+Binary: 000000000000 - Offset in the physical memory page - HEX: 0x00
+
+kd> r cr3
+cr3=00000000001aa000
+kd> .formats 00000000001aa000
+Binary: 00000000 00000000 00000000 00000000 00000000 00011010 10100000 00000000
+Binary: 00000000 00000000 00000000 00000000 00000000 00011010 10100000 00000000 - We null the first 12 bits (11 if we start counting from 0) to obtain the base of the PML4 Table: 001aa000
+PML4 Table Base: 001aa000
+
+Entry 0x1ED is a self-reference entry:
+
+kd> !dq 001aa000 + 0x1ED * 8 L1
+#  1aaf68 80000000`001aa063
+
+Due to this self reference we will shift the entire page table walk by one level causing the MMU to retrieve the PTE rather than the physical address page frame as a last step. This also means that if we use the same self reference entry 0x1ED we can gain access to more P*E structures.
+
+The MMU while determinating the physical address of a virtual memory address will page table walk as follows:
+
+PML4E -> PDPE -> PDE -> PYE -> Offset
+
+Now due to the fact that we are using a self reference in the PML4 table (0x1ED) we shift the entire page table walk by one level as follows:
+
+PML4E -> PML4E -> PDPE -> PDE -> PTE
+
+Since in the above example we have referrenced the PML4 table one time the end result is a PTE: 0xFFFFF68000000000
+
+As mentioned above by using this self reference more than once we can get other P*E structures, for example we can use the self reference twice to obtain the PDE:
+
+PML4E -> PML4E -> PML4E  -> PDPE -> PDE
+
+In order to do this we simply change our binary to add another reference as follows:
+
+Binary: 11111111 11111111 - Ignored bits set identical to bit 47
+Binary: 111101101 - Entry in the Page Map Level 4 Table (PML4) - HEX: 0x1ED - SELF REFERENCE
+Binary: 111101101 - Entry in the Page Directory Pointer Table (PDPT) - HEX: 0x1ED - SELF REFERENCE TO PML4
+Binary: 000000000 - Entry in the Page Directory Table Entry (PDT) - HEX: 0x00
+Binary: 000000000 - Entry in the Page Table (PT) - HEX: 0x00
+Binary: 000000000000 - Offset in the physical memory page - HEX: 0x00
+
+The end result will be:
+
+Binary: 11111111 11111111 11110110 11111011 01000000 00000000 00000000 00000000 = FFFFF6FB40000000
+
+We can confirm these values by using WinDBG as follows, we attempt to get the P*E addresses of the null page (first virtual memory page):
+
+kd> !pte 0x0000000000000000
+                                           VA 0000000000000000
+PXE at FFFFF6FB7DBED000    PPE at FFFFF6FB7DA00000    PDE at FFFFF6FB40000000    PTE at FFFFF68000000000
+contains 011000007B302867  contains 0000000000000000
+pfn 7b302     ---DA--UWEV  not valid
+
+To find the maximum values we can just use WinDBG on the last page: (SEE IF YOU CAN FIGURE OUT EACH STRUCTURE SIZE WITHOUT WINDBG)
+
+kd> !pte 0xffffffffffffffff
+                                           VA ffffffffffffffff
+PXE at FFFFF6FB7DBEDFF8    PPE at FFFFF6FB7DBFFFF8    PDE at FFFFF6FB7FFFFFF8    PTE at FFFFF6FFFFFFFFF8
+contains 000000000031E063  contains 000000000031F063  contains 0000000000321063  contains 0000000000000000
+pfn 31e       ---DA--KWEV  pfn 31f       ---DA--KWEV  pfn 321       ---DA--KWEV  not valid
+
+The maximum range of the virtual address can be determined from the Intel Manual "Section 4.5 IA-32E PAGING" which states the following:
+"Because a PML4E is identified using bits 47:39 of the linear address, it controls access to a 512-GByte region of the linear-address space."
+
+? FFFFF6FFFFFFFFFF - FFFFF68000000000
+Evaluate expression: 549755813887 = 0000007f`ffffffff = ‭549755813887‬ Bytes = 512 GiBytes
+
+Using the number of bytes that define each section we can map out app the PxE structures: 
+
+Bytes 47:39 contain the PML4 mapping entry, therefor each entry in the PML4 (Keep in mind each process has a different PML4) maps an address range where these bits (47:39) are constant, meaning that we will go from all bits from 38:0 being set to "0" until all of them are set to "1"
+
+11111111 11111111	- Ignored bits
+111101101			- PML4 self-reference entry (this will be constant per process)
+000000000			- PDPT
+000000000			- PDP
+000000000			- PT
+000000000000		- Offset
+
+??? starts from: 11111111 11111111 111101101 000000000 000000000 000000000 000000000000 = FFFFF68000000000
+??? stops at: 11111111 11111111 111101101 111111111 111111111 111111111 111111111111 = FFFFF6FFFFFFFFFF
+
+We can also calculate the PxE virtual address for any given VA if we shift it 9 bits (to get the PTE, if we want to get the PDE we shift it by 18, etc.) to the right (we are shifting the entire indexes by one level, each PxE entry is 9 bits) then null out bits 2:0 (given that we shift everything right the PT will end up instead of the Offset table which has 12 bits so the last 3 bits which are a leftover from the Offset VA are set to 0 as they are meaningless, they would just give us an offset from the PTE starting address)
+
+C:\Users\n00b\Desktop>memory_paging_x64.exe
+[+] Memory allocated at: 44444444
+[+] Press ENTER to trigger the vulnerability
+
+kd> !process 0 0 memory_paging_x64.exe
+PROCESS ffffe0018df87080
+    SessionId: 1  Cid: 0e34    Peb: 7ff654e25000  ParentCid: 0c5c
+    DirBase: 5576b000  ObjectTable: ffffc000a44c1780  HandleCount: <Data Not Accessible>
+    Image: memory_paging_x64.exe
+kd> .process /i ffffe0018df87080
+kd> g
+
+kd> dq 44444444 L4
+00000000`44444444  41414141`41414141 41414141`41414141
+00000000`44444454  41414141`41414141 41414141`41414141
+kd> !pte 44444444 
+                                           VA 0000000044444444
+PXE at FFFFF6FB7DBED000    PPE at FFFFF6FB7DA00008    PDE at FFFFF6FB40001110    PTE at FFFFF68000222220
+contains 013000007785B867  contains 023000000316D867  contains 1C100000707B1867  contains 1C200000351B2867
+pfn 7785b     ---DA--UWEV  pfn 316d      ---DA--UWEV  pfn 707b1     ---DA--UWEV  pfn 351b2     ---DA--UWEV
+
+kd> .formats 0x0000000044444444
+Binary:  00000000 00000000 00000000 00000000 01000100 01000100 01000100 01000100
+
+We shift the VA 9 bits to the right: 
+
+kd> ? 0x0000000044444444 >> 0x09
+Evaluate expression: 2236962 = 00000000`00222222
+kd> .formats 0x0000000000222222
+Binary:  00000000 00000000 00000000 00000000 00000000 00100010 00100010 00100010
+
+The indexes are changed as follows: 
+
+0x0000000044444444          ->          0x0000000000222222
+
+0000000000000000 (Ignored)  ->          0000000000000000 (Ignored)
+000000000 (PML4E)           ->          000000000 (PML4E)
+000000001 (PDPE)            ->          000000000 (PDPE = PML4)
+000100010 (PDE)             ->          000000001 (PDE = PDPE)
+001000100 (PTE)             ->          000100010 (PTE = PDE)
+010001000100 (Offset)       ->          001000100 (Offset = PTE)
+                                        010 (Offset leftover)
+
+Based on the above we can clearly see that if we were to replace the PML4E with the self-reference index the shift in indexes would cause the address translation of that VA to result in the physical page of the PTE for our original VA. 
+
+We replace the current PML4 entry with the PML4 self-reference entry in this VA (we don't need to shift anything because we did it previously) and also set bits 63:48 to match bit 47 in order to keep the address canonical: 
+
+1111111111111111	- Sign extended
+111101101			- PML4 self-reference
+000000000			- PML4 (PDPE)
+000000001			- PDPE (PDE)
+000100010			- PDE  (PTE)
+001000100			- PTE  (Offset)
+010					  - Remainder of the offset (We will set these bits to 0).
+
+If we take a look at the resulting VA we will see that it is actually the PTE of our initial virtual address (0x0000000044444444)
+
+kd> ? 0y1111111111111111111101101000000000000000001000100010001000100000
+Evaluate expression: -10445358226912 = fffff680`00222220
+
+The process can also be reversed by shifting this address left by 9 bits and adjusting bite 63:48 to keep the address canonical: 
+
+kd> ? fffff680`00222220 << 0x09
+Binary:  11111111 11101101 00000000 00000000 01000100 01000100 01000000 00000000
+
+0000000000000000	- Sign extended
+000000000			- PML4 self-reference
+000000001			- PDPE
+000100010			- PDE
+001000100			- PTE
+000000000000		- Offset
+
+kd> ? 0y0000000000000000000000000000000001000100010001000100000000000000
+Evaluate expression: 1145323520 = 00000000`44444000 (Remember memory pages are allocated in size of 4kB or 0x1000). 
+
+What is important to realize is that the virtual PTE address fffff680`00222220 will always be the PTE for the virtual memory address 0x00000000`44444444 on any process, however, the control information (P, R/W, U/S bits, etc.) will differ depending on the context of the process we are in at the time of the translation. This is because the CR3 register is different in between each process so depending on the process we can see if the address 0x00000000`44444444 is mapped at all and if it is what sort of control information it has. 
+
+This can be automated in C code as follows: 
+
+ULONGLONG get_pxe_address_64(ULONGLONG address) {
+	ULONGLONG result = address >> 9;
+	result = result | 0xFFFFF68000000000;
+	result = result & 0xFFFFF6FFFFFFFFF8;
+	return result;
+}
+
+We first shift right the address by 9 bits. 
+
+kd> ? 0x0000000044444444 >> 0x09
+Evaluate expression: 2236962 = 00000000`00222222
+
+kd> !pte 0
+                                           VA 0000000000000000
+PXE at FFFFF6FB7DBED000    PPE at FFFFF6FB7DA00000    PDE at FFFFF6FB40000000    PTE at FFFFF68000000000
+contains 01300000421C7847  contains 0000000000000000
+pfn 421c7     ---D---UWEV  not valid
+
+After getting the result we will perform an OR operation between the result and the first PTE. 
+
+kd> ? 00000000`00222222 | fffff680`00000000
+Evaluate expression: -10445358226910 = fffff680`00222222
+
+00000000 00000000 00000000 00000000 00000000 00100010 00100010 00100010 = 00000000`00222222
+11111111 11111111 11110110 10000000 00000000 00000000 00000000 00000000 = fffff680`00000000
+11111111 11111111 11110110 10000000 00000000 00100010 00100010 00100010 = fffff680`00222222
+
+And as a last step we perform an AND operation against fffff6ff`fffffff8 (the last 8 there is because in binary 8 = 1000, performing an end will ensure that the first 3 bits are set to 0 always).
+
+kd> ? fffff680`00222222 & 0xfffff6ff`fffffff8
+Evaluate expression: -10445358226912 = fffff680`00222220
+
+11111111 11111111 11110110 10000000 00000000 00100010 00100010 00100010 = fffff680`00222222
+11111111 11111111 11110110 11111111 11111111 11111111 11111111 11111000 = fffff6ff`fffffff8
+11111111 11111111 11110110 10000000 00000000 00100010 00100010 00100000 = fffff680`00222220

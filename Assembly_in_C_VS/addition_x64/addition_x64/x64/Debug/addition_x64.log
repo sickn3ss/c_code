@@ -1,0 +1,22 @@
+﻿Build started 8/31/2015 1:20:15 PM.
+Project "C:\Users\sickness\Desktop\addition_x64\addition_x64\addition_x64.vcxproj" on node 2 (Build target(s)).
+_MASM:
+  Assembling Function_x64.asm...
+  cmd.exe /C "C:\Users\sickness\AppData\Local\Temp\tmpd89a52ca21934e6986f361bf7a6264d9.cmd"
+  ml64.exe /c /nologo /Zi /Fo"x64\Debug\Function_x64.obj" /W3 /errorReport:prompt  /TaFunction_x64.asm
+ClCompile:
+  C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\bin\x86_amd64\CL.exe /c /ZI /nologo /W3 /WX- /Od /D _DEBUG /D _CONSOLE /D _UNICODE /D UNICODE /Gm /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"x64\Debug\\" /Fd"x64\Debug\vc140.pdb" /Gd /TP /errorReport:prompt addition_x64.cpp stdafx.cpp
+  stdafx.cpp
+  addition_x64.cpp
+  Generating Code...
+Link:
+  C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\bin\x86_amd64\link.exe /ERRORREPORT:PROMPT /OUT:"C:\Users\sickness\Desktop\addition_x64\x64\Debug\addition_x64.exe" /INCREMENTAL /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /Debug /PDB:"C:\Users\sickness\Desktop\addition_x64\x64\Debug\addition_x64.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"C:\Users\sickness\Desktop\addition_x64\x64\Debug\addition_x64.lib" /MACHINE:X64 x64\Debug\addition_x64.obj
+  x64\Debug\stdafx.obj
+  x64\Debug\Function_x64.obj
+  LINK : C:\Users\sickness\Desktop\addition_x64\x64\Debug\addition_x64.exe not found or not built by the last incremental link; performing full link
+  addition_x64.vcxproj -> C:\Users\sickness\Desktop\addition_x64\x64\Debug\addition_x64.exe
+Done Building Project "C:\Users\sickness\Desktop\addition_x64\addition_x64\addition_x64.vcxproj" (Build target(s)).
+
+Build succeeded.
+
+Time Elapsed 00:00:02.34

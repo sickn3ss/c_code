@@ -1,0 +1,3 @@
+/Users/sickness/CLionProjects/CLion_cross_compiling/cmake-build-debug/CMakeFiles/rebuild_cache.dir
+/Users/sickness/CLionProjects/CLion_cross_compiling/cmake-build-debug/CMakeFiles/edit_cache.dir
+/Users/sickness/CLionProjects/CLion_cross_compiling/cmake-build-debug/CMakeFiles/untitled.exe.dir

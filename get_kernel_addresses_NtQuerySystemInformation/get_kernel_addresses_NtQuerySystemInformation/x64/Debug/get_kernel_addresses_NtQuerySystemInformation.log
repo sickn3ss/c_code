@@ -1,0 +1,4 @@
+﻿  get_kernel_addresses_NtQuerySystemInformation.cpp
+c:\users\admin\source\repos\get_kernel_addresses_ntquerysysteminformation\get_kernel_addresses_ntquerysysteminformation\get_kernel_addresses_ntquerysysteminformation.cpp(98): warning C4018: '<': signed/unsigned mismatch
+c:\users\admin\source\repos\get_kernel_addresses_ntquerysysteminformation\get_kernel_addresses_ntquerysysteminformation\get_kernel_addresses_ntquerysysteminformation.cpp(84): warning C4101: 'i': unreferenced local variable
+  get_kernel_addresses_NtQuerySystemInformation.vcxproj -> C:\Users\admin\source\repos\get_kernel_addresses_NtQuerySystemInformation\x64\Debug\get_kernel_addresses_NtQuerySystemInformation.exe

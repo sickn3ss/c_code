@@ -1,0 +1,32 @@
+To compile we first run the cl.exe from command line (it will error out and not generate an exe but it will generate an obj)
+
+cl.exe /GS- /TC /GL /W4 /O1 /nologo /Zl /FA /Os /I C:\Users\sickness\Desktop\shellcode\ sc.c
+
+After we have the .obj file we proceed to link it using the following command: 
+
+link.exe /LTCG /ENTRY:"ExecPayload" /OPT:REF /SAFESEH:NO /SUBSYSTEM:CONSOLE /MAP /ORDER:@"function_link_order.txt" /OPT:ICF /NOLOGO /NODEFAULTLIB sc.obj
+
+If the command completes successfully you should see the following output: 
+
+Generating code
+Finished generating code
+
+Extracting the Shellcode
+
+After the code is compiled and linked, the final step is to pull the shellcode out of the resulting exe. This requires a tool that can parse a PE file and pull the bytes out of the .text section. Fortunately, Get-PEHeader already does this. The only caveat though is that if you were to pull out the entire .text section, you would be left with a bunch of null padding. That’s why I wrote another script that parses the map file which contains the actual length of the code in the .text section.
+
+For those who enjoy analyzing PE files, it is worth investigating the exe files generated. It will only contain a single section - .text and it will not have any entries in the data directories in the optional header. This is exactly what I sought after – a binary without any relocations, extraneous sections, or imports.
+
+
+MAKE SURE YOU CHANGE THE .MAP FILE AND REMOVE THE “$mn” from the “.text”
+
+PS C:\Users\sickness\Desktop\test> .\Out-Shellcode.ps1
+
+cmdlet Out-Shellcode.ps1 at command pipeline position 1
+Supply values for the following parameters:
+InputExe: C:\Users\sickness\Desktop\test\sc.exe
+ProjectDir: C:\Users\sickness\Desktop\test\
+InputMapFile: C:\Users\sickness\Desktop\test\sc.map
+OutputFile: C:\Users\sickness\Desktop\sc_sick.bin
+Shellcode length: 0x04EA
+PS C:\Users\sickness\Desktop\test>

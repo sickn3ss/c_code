@@ -1,0 +1,5 @@
+﻿  Thread_example.cpp
+c:\users\admin\desktop\thread_example\thread_example\thread_example.cpp(17): error C2664: 'HRESULT StringCchPrintfW(STRSAFE_LPWSTR,size_t,STRSAFE_LPCWSTR,...)': cannot convert argument 1 from 'char [255]' to 'STRSAFE_LPWSTR'
+  c:\users\admin\desktop\thread_example\thread_example\thread_example.cpp(17): note: Types pointed to are unrelated; conversion requires reinterpret_cast, C-style cast or function-style cast
+c:\users\admin\desktop\thread_example\thread_example\thread_example.cpp(18): error C2664: 'HRESULT StringCchLengthW(STRSAFE_PCNZWCH,size_t,size_t *)': cannot convert argument 1 from 'char [255]' to 'STRSAFE_PCNZWCH'
+  c:\users\admin\desktop\thread_example\thread_example\thread_example.cpp(18): note: Types pointed to are unrelated; conversion requires reinterpret_cast, C-style cast or function-style cast

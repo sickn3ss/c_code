@@ -1,0 +1,16 @@
+﻿Build started 8/31/2015 1:27:53 PM.
+Project "C:\Users\sickness\Desktop\ASM_MessageBox\ASM_MessageBox\ASM_MessageBox.vcxproj" on node 2 (Build target(s)).
+_MASM:
+  Assembling CallMSG.asm...
+  cmd.exe /C "C:\Users\sickness\AppData\Local\Temp\tmpb3482991b9794f4885b20a8616fd2a29.cmd"
+  ml64.exe /c /nologo /Zi /Fo"x64\Debug\CallMSG.obj" /W3 /errorReport:prompt  /TaCallMSG.asm
+Link:
+  C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\bin\x86_amd64\link.exe /ERRORREPORT:PROMPT /OUT:"C:\Users\sickness\Desktop\ASM_MessageBox\x64\Debug\ASM_MessageBox.exe" /INCREMENTAL /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /Debug /PDB:"C:\Users\sickness\Desktop\ASM_MessageBox\x64\Debug\ASM_MessageBox.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"C:\Users\sickness\Desktop\ASM_MessageBox\x64\Debug\ASM_MessageBox.lib" /MACHINE:X64 x64\Debug\ASM_MessageBox.obj
+  x64\Debug\stdafx.obj
+  x64\Debug\CallMSG.obj
+  ASM_MessageBox.vcxproj -> C:\Users\sickness\Desktop\ASM_MessageBox\x64\Debug\ASM_MessageBox.exe
+Done Building Project "C:\Users\sickness\Desktop\ASM_MessageBox\ASM_MessageBox\ASM_MessageBox.vcxproj" (Build target(s)).
+
+Build succeeded.
+
+Time Elapsed 00:00:01.06

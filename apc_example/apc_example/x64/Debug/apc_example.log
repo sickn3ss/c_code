@@ -1,0 +1,6 @@
+﻿  apc_example.c
+c:\users\admin\source\repos\apc_example\apc_example\apc_example.c(18): warning C4477: 'printf' : format string '%d' requires an argument of type 'int', but variadic argument 1 has type 'ULONG_PTR'
+  c:\users\admin\source\repos\apc_example\apc_example\apc_example.c(18): note: consider using '%lld' in the format string
+  c:\users\admin\source\repos\apc_example\apc_example\apc_example.c(18): note: consider using '%Id' in the format string
+  c:\users\admin\source\repos\apc_example\apc_example\apc_example.c(18): note: consider using '%I64d' in the format string
+  apc_example.vcxproj -> C:\Users\admin\source\repos\apc_example\x64\Debug\apc_example.exe

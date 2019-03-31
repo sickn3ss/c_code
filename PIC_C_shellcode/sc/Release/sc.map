@@ -1,0 +1,21 @@
+ sc
+
+ Timestamp is 530b7bc3 (Mon Feb 24 09:05:07 2014)
+
+ Preferred load address is 00400000
+
+ Start         Length     Name                   Class
+ 0001:00000000 000005b5H .text$mn                CODE
+
+  Address         Publics by Value              Rva+Base       Lib:Object
+
+ 0000:00000000       ___guard_fids_table        00000000     <absolute>
+ 0000:00000000       ___guard_flags             00000000     <absolute>
+ 0000:00000000       ___guard_fids_count        00000000     <absolute>
+ 0001:00000000       _ExecPayload               00401000 f   sc.obj
+ 0001:000004dd       _GetProcAddressByHash      004014dd f   sc.obj
+
+ entry point at        0001:00000000
+
+ Static symbols
+

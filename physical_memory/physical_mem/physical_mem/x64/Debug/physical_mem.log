@@ -1,0 +1,4 @@
+﻿  physical_mem.cpp
+c:\users\sickness\desktop\physical_mem\physical_mem\physical_mem.cpp(86): warning C4244: '=': conversion from 'ULONG_PTR' to 'int', possible loss of data
+c:\users\sickness\desktop\physical_mem\physical_mem\physical_mem.cpp(75): warning C4047: 'initializing': 'LPVOID' differs in levels of indirection from 'int'
+  physical_mem.vcxproj -> C:\Users\sickness\Desktop\physical_mem\x64\Debug\physical_mem.exe

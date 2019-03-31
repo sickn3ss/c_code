@@ -1,0 +1,200 @@
+References: 
+https://dzone.com/articles/exercise-virtual-physical
+https://blogs.msdn.microsoft.com/ntdebugging/2010/02/05/understanding-pte-part-1-lets-get-physical/
+https://blogs.msdn.microsoft.com/ntdebugging/2010/04/14/understanding-pte-part2-flags-and-large-pages/
+https://blogs.msdn.microsoft.com/ntdebugging/2010/06/22/part-3-understanding-pte-non-pae-and-x64/
+https://www.noteblok.net/wp-content/uploads/sites/3/2015/01/Self-referenced_Page_Tables-Vogel-ASPLOS_SrC.pdf
+http://www.intel.com/content/www/us/en/processors/architectures-software-developer-manuals.html
+https://inst.eecs.berkeley.edu/~cs162/sp16/static/sections/section8sol.pdf
+https://courses.engr.illinois.edu/cs241/sp2014/lecture/09-VirtualMemory_II_sol.pdf
+http://www.makelinux.net/ldd3/chp-15-sect-1
+http://www.cs.utexas.edu/users/witchel/372/lectures/15.VirtualMemory.pdf
+https://cseweb.ucsd.edu/classes/su09/cse120/lectures/Lecture7.pdf
+http://www.tldp.org/LDP/tlk/mm/memory.html
+https://en.wikipedia.org/wiki/PSE-36
+
+Note: 
+- In common software such as WinDBG we will see references to "PTE" this is Page Table Entry (the name of the structure + entry). 
+- In order to gether the MAXPHYADDR: 
+
+```
+mov eax,80000008h
+cpuid
+
+1: kd> r rax
+rax=000000000000302a
+1: kd> .formats 000000000000302a
+Binary:  00000000 00000000 00000000 00000000 00000000 00000000 00110000 00101010
+
+1: kd> ?0y00101010
+Evaluate expression: 42 = 00000000`0000002a
+MAXPHYADDRESS: 42 (7:0) - This can go up to 51 maximum.
+```
+
+- Based on the intel manual, when doing address translation we use the following bits from the PxE structures (page 2097): 
+
+```
+Bits 11:0 = Set to 0 ignored
+Bits 51:42 = Reserved, set to 0
+Bits 63:52 = Set to 0 ignored
+```
+
+Why do we null the first 12 bits ? Because they are flags (like U/S), the structure begins at the beginning of the physical page.
+
+Now when we first access these structures we don’t directly get the base address of that structure for example when we look at the Page Directory Pointer Table (PDPT) we get it’s “0x4f375867” which obviously is not the base of the address. On page 2097 of the Intel manual it appears that what we get also includes the flags that are set for that particular page like Read/Write ,etc.  
+
+--------------------------------------------------------------------------------------------------------------------
+
+Virtual Address: 0x0000000044444444
+Binary: 00000000 00000000 00000000 00000000 01000100 01000100 01000100 01000100
+
+0000000000000000	- Sign extended
+000000000			- index into the PML4 (Bits 47:39) = 0x00 (PML4E)
+000000001			- index into the PDPT (Bits 38:30) = 0x01 (PDPE)
+000100010			- index into the PDT  (Bits 29:21) = 0x22 (PDE)
+001000100			- index into the PT   (Bits 20:12) = 0x44 (PTE)
+010001000100		- Offset from the physical address base = 0x444 (Offset)
+
+We first begin by switching to the context of our process: 
+
+kd> !process 0 0 memory_paging_x64.exe
+PROCESS ffffaa0390de2080
+    SessionId: 1  Cid: 0f88    Peb: 7c4088b000  ParentCid: 07f4
+    DirBase: 8e604000  ObjectTable: ffffbc8bb92f2300  HandleCount: <Data Not Accessible>
+    Image: memory_paging_x64.exe
+
+kd> .process /i ffffaa0390de2080
+kd> g
+
+Reading through the Intel Manual "Section 4.5 IA-32E PAGING" we see that the CR3 register is used to locate the physical address of the first structure, the Page Map Level 4 Table (PML4).
+
+0: kd> r cr3
+cr3=00000000231db000
+
+0: kd> .formats 00000000231db000
+Binary:  00000000 00000000 00000000 00000000 00100011 00011101 10110000 00000000
+
+0000000000000000000000100011000111011011000000000000
+
+Bits 11:0 = Set to 0 ignored
+Bits 51:42 = Reserved, set to 0
+Bits 63:52 = are ignored
+
+PML4 PFN: 00000000`231db000
+
+Now that we have the beginning of the PML4 table we can retrieve the entry which points to the Page Directory Pointer Table (PDPT) using the index retrieved from our virtual address which in this case is ENTRY 0x00 (each entry is 0x08 bytes).
+
+0: kd> !dq 00000000`231db000 + 0x00 * 0x08 L1
+#231db000 00d00001`2a8b3867
+
+0: kd> .formats 00d00001`2a8b3867
+Binary:  00000000 11010000 00000000 00000001 00101010 10001011 00111000 01100111
+
+0000000000000000000100101010100010110011000000000000
+
+Bits 11:0 = Set to 0 ignored
+Bits 51:42 = Reserved, set to 0
+Bits 63:52 = are ignored
+
+0: kd> ?0y0000000000000000000100101010100010110011000000000000
+Evaluate expression: 5008732160 = 00000001`2a8b3000 (PDPT PFN)
+
+We can repeat the same steps in order to get the pointer to the next structure which is the Page Directory Table (PDT), however, we need to use the next index from our virtual address which in our case is ENTRY 0x01.
+
+0: kd> !dq 00000001`2a8b3000 + 0x01 * 0x08 L1
+#12a8b3008 02e00001`1b7d2867
+
+0: kd> .formats 02e00001`1b7d2867
+Binary:  00000010 11100000 00000000 00000001 00011011 01111101 00101000 01100111
+
+0000000000000000000100011011011111010010000000000000
+
+Bits 11:0 = Set to 0 ignored
+Bits 51:42 = Reserved, set to 0
+Bits 63:52 = are ignored
+
+0: kd> ?0y0000000000000000000100011011011111010010000000000000
+Evaluate expression: 4756152320 = 00000001`1b7d2000 (PDP PFN)
+
+We can repeat the same steps in order to get the pointer to the next structure which is the Page Table (PT), however, we need to use the next index from our virtual address which in our case is ENTRY 0x22.
+
+0: kd> ?0y000100010	
+Evaluate expression: 34 = 00000000`00000022
+0: kd> !dq 00000001`1b7d2000 + 0x22 * 0x08 L1
+#11b7d2110 1c600001`36511867
+
+0: kd> .formats 1c600001`36511867
+Binary:  00011100 01100000 00000000 00000001 00110110 01010001 00011000 01100111
+
+0000000000000000000100110110010100010001000000000000
+
+Bits 11:0 = Set to 0 ignored
+Bits 51:42 = Reserved, set to 0
+Bits 63:52 = are ignored
+
+0: kd> ?0y0000000000000000000100110110010100010001000000000000
+Evaluate expression: 5206249472 = 00000001`36511000 (PT PFN)
+
+We can repeat the same steps in order to get the PTE which is our physical address page, however, we need to use the next index from our virtual address which in our case is ENTRY 0x44.
+
+0: kd> ?0y001000100
+Evaluate expression: 68 = 00000000`00000044
+0: kd> !dq 00000001`36511000 + 0x44 * 0x08 L1
+#136511220 1c700001`24012867
+
+0: kd> .formats 1c700001`24012867
+Binary:  00011100 01110000 00000000 00000001 00100100 00000001 00101000 01100111
+
+0000000000000000000100100100000000010010000000000000
+
+Bits 11:0 = Set to 0 ignored
+Bits 51:42 = Reserved, set to 0
+Bits 63:52 = are ignored
+
+0: kd> ?0y0000000000000000000100100100000000010010000000000000
+Evaluate expression: 4899020800 = 00000001`24012000 (Physical memory page)
+
+As a final step we need to add the Offset to our physical memory page (0x444) and compare the memory allocated at the virtual address 0x0000000044444444 with the one at our physical address:
+
+0: kd> ?0y010001000100
+Evaluate expression: 1092 = 00000000`00000444
+0: kd> !dd 00000001`24012000 + 0x444
+#124012444 41414141 41414141 41414141 41414141
+#124012454 41414141 41414141 41414141 41414141
+#124012464 41414141 41414141 41414141 41414141
+#124012474 41414141 41414141 41414141 41414141
+#124012484 41414141 41414141 41414141 41414141
+#124012494 41414141 41414141 41414141 41414141
+#1240124a4 41414141 41414141 41414141 41414141
+#1240124b4 41414141 41414141 41414141 41414141
+
+1: kd> dd 0x0000000044444444
+00000000`44444444  41414141 41414141 41414141 41414141
+00000000`44444454  41414141 41414141 41414141 41414141
+00000000`44444464  41414141 41414141 41414141 41414141
+00000000`44444474  41414141 41414141 41414141 41414141
+00000000`44444484  41414141 41414141 41414141 41414141
+00000000`44444494  41414141 41414141 41414141 41414141
+00000000`444444a4  41414141 41414141 41414141 41414141
+00000000`444444b4  41414141 41414141 41414141 41414141
+
+--------------------------------------------------------------------------------------------------------------------
+
+Every physical page has to be 4kB (4.096 Kilobytes) aligned. So if you take the starting address of a physical page and divide it by 4K (which is 4 Kibibytes == 4.096 Kilobytes) you will get the page frame number, this can also be seen as PFN = Physical Address >> 12: 
+
+1: kd> ? 00000001`24012000 >> 0x0c
+Evaluate expression: 1196050 = 00000000`00124012
+
+1: kd> !pte 0x0000000044444444
+                                           VA 0000000044444444
+PXE at FFFFCCE673399000    PPE at FFFFCCE673200008    PDE at FFFFCCE640001110    PTE at FFFFCC8000222220
+contains 00D000012A8B3867  contains 02E000011B7D2867  contains 1C60000136511867  contains 1C70000124012867
+pfn 12a8b3    ---DA--UWEV  pfn 11b7d2    ---DA--UWEV  pfn 136511    ---DA--UWEV  pfn 124012    ---DA--UWEV
+
+1: kd> ? 00000001`24012000 / 0x1000
+Evaluate expression: 1196050 = 00000000`00124012
+
+The beginning of each paging structure is 40 bits alligned to the 4kB boundary: 
+- bits 0:11 are used for the control information. 
+- bits 12:M-1 are used for the actual base address of the paging structure. 
+- bits M:51 are reserved (11 bits + 40 bits = 51 bits) - So we use 40 bits that are aligned to a 4kB boundary to perform address translation.

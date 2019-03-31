@@ -1,0 +1,3 @@
+﻿  callback_example.c
+c:\users\admin\source\repos\callback_example\callback_example\callback_example.c(21): warning C4013: 'rand' undefined; assuming extern returning int
+  callback_example.vcxproj -> C:\Users\admin\source\repos\callback_example\x64\Debug\callback_example.exe

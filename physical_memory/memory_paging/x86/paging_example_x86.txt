@@ -1,0 +1,79 @@
+References: 
+https://dzone.com/articles/exercise-virtual-physical
+https://blogs.msdn.microsoft.com/ntdebugging/2010/02/05/understanding-pte-part-1-lets-get-physical/
+https://blogs.msdn.microsoft.com/ntdebugging/2010/02/05/understanding-pte-part-1-lets-get-physical/
+https://blogs.msdn.microsoft.com/ntdebugging/2010/06/22/part-3-understanding-pte-non-pae-and-x64/
+https://www.noteblok.net/wp-content/uploads/sites/3/2015/01/Self-referenced_Page_Tables-Vogel-ASPLOS_SrC.pdf
+http://www.intel.com/content/www/us/en/processors/architectures-software-developer-manuals.html
+
+Note: 
+- We null the first 12 bits based on the information found in the Intel Manual.
+- In common software such as WinDBG we will see references to "PTE" this is Page Table Entry (the name of the structure + entry).
+- This tutorial assumes PAE is enabled on the system (check CR4 )
+
+Virtual Address: 0x44000000
+Binary: 01000100 00000000 00000000 00000000
+
+Binary: 01 - Entry in the Page Directory Pointer Table (PDPE)
+Binary: 000100000 - Entry in the Page Directory Table Entry (PDE) (in DEC == entry 32) - HEX: 0x20
+Binary: 000000000 - Entry in the Page Table (PTE) - HEX: 0x00
+Binary: 000000000000 - Offset in the physical memory page - HEX: 0x00
+
+We first begin by switching to the context of our process: 
+
+kd> !process 0 0 memory_paging_x86.exe
+PROCESS abaa6a00  SessionId: 1  Cid: 1368    Peb: 7f68f000  ParentCid: 1790
+    DirBase: 3fff0700  ObjectTable: 8fe10200  HandleCount: <Data Not Accessible>
+    Image: memory_paging_x86.exe
+
+kd> .process /i abaa6a00
+kd> g
+
+Reading through the Intel Manual "Section 4.4 PAE PAGING" we see that the CR3 register is used to locate the physical base address of the first structure, the Page Directory Pointer Table (PDPT).
+
+kd> r cr3
+cr3=3fff0700
+
+kd> .formats 3fff0700
+Evaluate expression:
+Binary: 00111111 11111111 00000111 00000000
+Binary: 00111111 11111111 00000111 00000000 - We null the first 5 bits (or 4 bits if we start the count from 0) to get the base address of the PDP Table: 3fff0700
+PDP Table Base: 3fff0700
+
+Now that we have the beginning of the PDP table we can retrieve the entry which points to the Page Directory Table (PDT) using the index retrieved from our virtual address which in this case is ENTRY 0x01.
+
+kd> !dq 3fff0700 + 0x01 * 8 L1
+#3fff0708 00000000`0a037801
+
+kd> .formats 0a037801
+Binary: 00001010 00000011 01111000 00000001 - The P bit (bit 0) is set to 1 which means that we have a 4KByte naturally alligned page.
+Binary: 00001010 00000011 01110000 00000000 - We null the first 12 bits (or 11 bits if we start the count from 0) to get the beginning of the PD Table: 0a037000
+PD Table Base: 0a037000
+
+We can repeat the same steps in order to get the pointer to the next structure which is the Page Table (PT), however, we need to use the next index from our virtual address which in our case is ENTRY 0x20.
+
+kd> !dq 0a037000 + 0x20 * 8 L1 
+# a037100 00000000`209c9867 (PTE)
+
+kd> .formats 209c9867
+Binary: 00100000 10011100 10011000 01100111 - The PS bit (bit 7) is set to 0 which means that we have a 4KByte naturally alligned page.
+Binary: 00100000 10011100 10010000 00000000 - We null the first 12 bits (or 11 bits if we start the count from 0) to get the base address of the PT: 209c9000
+PT Table Base: 209c9000
+
+We can repeat the same steps in order to get the pointer to the next structure which is the Offset to our physical address, however, we need to use the next index from our virtual address which in our case is ENTRY 0x00.
+
+kd> !dq 209c9000 + 0x00 * 8 L1
+#209c9000 00000000`25e8a867 (Offset)
+
+kd> .formats 25e8a867
+Binary: 00100101 11101000 10101000 01100111
+Binary: 00100101 11101000 10100000 00000000 - We null the first 12 bits (or 11 bits if we start the count from 0) to get the beginning of our physical memory page: 25e8a000
+Physical memory page base: 25e8a000
+
+As a final step we compare the memory allocated at the virtual address 0x44000000 with the one at our physical address 0x25e8a000:
+
+kd> dd 0x44000000 L4
+44000000  41414141 41414141 41414141 41414141
+kd> !dd 0x25e8a000 L4
+#25e8a000 41414141 41414141 41414141 41414141
+

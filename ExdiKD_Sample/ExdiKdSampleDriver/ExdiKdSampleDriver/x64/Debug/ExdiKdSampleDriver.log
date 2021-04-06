@@ -1,0 +1,23 @@
+﻿  Building 'ExdiKdSampleDriver' with toolset 'WindowsKernelModeDriver10.0' and the 'Universal' target platform.
+  Stamping x64\Debug\ExdiKdSampleDriver.inf
+  Stamping [Version] section with DriverVer=04/05/2021,11.19.25.10
+  ExdiKdSampleDriver.cpp
+  ExdiKdSampleDriver.vcxproj -> C:\Users\admin\Desktop\ExdiKdSampleDriver\x64\Debug\ExdiKdSampleDriver.sys
+  Done Adding Additional Store
+  Successfully signed: C:\Users\admin\Desktop\ExdiKdSampleDriver\x64\Debug\ExdiKdSampleDriver.sys
+  
+  Driver is 'Universal'.
+  ........................
+  Signability test complete.
+  
+  Errors:
+  None
+  
+  Warnings:
+  None
+  
+  Catalog generation complete.
+  C:\Users\admin\Desktop\ExdiKdSampleDriver\x64\Debug\ExdiKdSampleDriver\exdikdsampledriver.cat
+  Done Adding Additional Store
+  Successfully signed: C:\Users\admin\Desktop\ExdiKdSampleDriver\x64\Debug\ExdiKdSampleDriver\exdikdsampledriver.cat
+  

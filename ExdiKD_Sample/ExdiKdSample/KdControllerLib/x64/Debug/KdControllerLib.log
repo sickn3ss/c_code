@@ -1,0 +1,6 @@
+﻿  stdafx.cpp
+  AsynchronousKdController.cpp
+  BufferedStreamReader.cpp
+  KDController.cpp
+  Generating Code...
+  KdControllerLib.vcxproj -> C:\Users\admin\Desktop\ExdiKD_Sample\ExdiKdSample\x64\Debug\KdControllerLib.lib

@@ -1,0 +1,91 @@
+;
+; ExdiKdSampleDriver.inf
+;
+
+[Version]
+Signature="$WINDOWS NT$"
+Class=USBDevice
+ClassGuid={88BAE032-5A81-49f0-BC3D-A4FF138216D6}
+Provider=%ManufacturerName%
+CatalogFile=ExdiKdSampleDriver.cat
+DriverVer = 04/05/2021,11.19.25.10
+PnpLockDown=1
+
+[DestinationDirs]
+DefaultDestDir = 12
+ExdiKdSampleDriver_Device_CoInstaller_CopyFiles = 11
+
+[SourceDisksNames]
+1 = %DiskName%,,,""
+
+[SourceDisksFiles]
+ExdiKdSampleDriver.sys  = 1,,
+;
+
+
+;*****************************************
+; Install Section
+;*****************************************
+
+[Manufacturer]
+%ManufacturerName%=Standard,NTamd64
+
+[Standard.NTamd64]
+%ExdiKdSampleDriver.DeviceDesc%=ExdiKdSampleDriver_Device, USB\VID_vvvv&PID_pppp
+
+[ExdiKdSampleDriver_Device.NT]
+CopyFiles=Drivers_Dir
+
+[Drivers_Dir]
+ExdiKdSampleDriver.sys
+
+[ExdiKdSampleDriver_Device.NT.HW]
+AddReg=ExdiKdSampleDriver_AddReg
+
+[ExdiKdSampleDriver_AddReg]
+; By default, USBDevice class uses iProduct descriptor to name the device in
+; Device Manager on Windows 8 and higher.
+; Uncomment for this device to use %DeviceName% on Windows 8 and higher:
+;HKR,,FriendlyName,,%ExdiKdSampleDriver.DeviceDesc%
+
+;-------------- Service installation
+[ExdiKdSampleDriver_Device.NT.Services]
+AddService = ExdiKdSampleDriver,%SPSVCINST_ASSOCSERVICE%, ExdiKdSampleDriver_Service_Inst
+
+; -------------- ExdiKdSampleDriver driver install sections
+[ExdiKdSampleDriver_Service_Inst]
+DisplayName    = %ExdiKdSampleDriver.SVCDESC%
+ServiceType    = 1               ; SERVICE_KERNEL_DRIVER
+StartType      = 3               ; SERVICE_DEMAND_START
+ErrorControl   = 1               ; SERVICE_ERROR_NORMAL
+ServiceBinary  = %12%\ExdiKdSampleDriver.sys
+
+;
+;--- ExdiKdSampleDriver_Device Coinstaller installation ------
+;
+
+[ExdiKdSampleDriver_Device.NT.CoInstallers]
+AddReg=ExdiKdSampleDriver_Device_CoInstaller_AddReg
+CopyFiles=ExdiKdSampleDriver_Device_CoInstaller_CopyFiles
+
+[ExdiKdSampleDriver_Device_CoInstaller_AddReg]
+;
+
+
+[ExdiKdSampleDriver_Device_CoInstaller_CopyFiles]
+;
+
+
+[ExdiKdSampleDriver_Device.NT.Wdf]
+KmdfService =  ExdiKdSampleDriver, ExdiKdSampleDriver_wdfsect
+[ExdiKdSampleDriver_wdfsect]
+KmdfLibraryVersion = 1.15
+
+[Strings]
+SPSVCINST_ASSOCSERVICE= 0x00000002
+ManufacturerName="<Your manufacturer name>" ;TODO: Replace with your manufacturer name
+ClassName="Universal Serial Bus devices"
+DiskName = "ExdiKdSampleDriver Installation Disk"
+ExdiKdSampleDriver.DeviceDesc = "ExdiKdSampleDriver Device"
+ExdiKdSampleDriver.SVCDESC = "ExdiKdSampleDriver Service"
+REG_MULTI_SZ = 0x00010000
